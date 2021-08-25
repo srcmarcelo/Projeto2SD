@@ -1,0 +1,155 @@
+module UART_TOTAL
+	(
+		input clk,
+		input botao,
+		input [7:0] dados,
+		output reg [7:0] leds,
+		output reg [3:0] regPrimario,
+		output reg [3:0] regSecundario,
+		output reg [6:0] dMSB,
+		output reg [6:0] dLSB
+	);
+	
+	parameter baud = 217;
+	
+	wire tx_ativado, linha_uart, tx_serial;
+	wire [7:0] rx_byte;
+	wire rx_completo;
+	reg limpar = 0;
+	
+	
+	 UART_TX #(.CLKS_PER_BIT(baud)) UART_TX_Inst
+    (.i_Clock(clk),
+     .i_TX_DV(botao),
+     .i_TX_Byte(dados),
+     .o_TX_Active(tx_ativado),
+     .o_TX_Serial(tx_serial),
+     .o_TX_Done()
+     );
+	  
+	  UART_RX #(.CLKS_PER_BIT(baud)) UART_RX_Inst
+    (.i_Clock(clk),
+     .i_RX_Serial(linha_uart),
+     .o_RX_DV(rx_completo),
+     .o_RX_Byte(rx_byte)
+     );
+	  
+	  assign linha_uart = tx_ativado ? tx_serial : 1'b1;
+	  
+	  always @(posedge rx_completo)
+		begin
+			leds = rx_byte;
+			if(leds[7:4] == 4'b0001)
+			begin
+				 regPrimario = 4'b0000;
+				 limpar = 1;
+			end
+			if(leds[7:4] == 4'b0010)
+			begin
+				 regSecundario = leds[3:0];
+			end
+			if(leds[7:4] == 4'b0100)
+			begin
+				 limpar = 0;
+				 regPrimario = regSecundario;
+			end
+		end
+		
+		always @(regPrimario)
+		begin
+			if(limpar == 1)
+			begin
+				dMSB = 7'b1111111;
+				dLSB = 7'b1111111;
+			end
+			else
+			begin
+				case(regPrimario)
+				
+					4'b0000:
+					begin
+						dMSB = 7'b1000000;//0
+						dLSB = 7'b1000000;//0
+					end
+					4'b0001:
+					begin
+						dMSB = 7'b1000000;//0
+						dLSB = 7'b1111001;//1
+					end
+					4'b0010:
+					begin
+						dMSB = 7'b1000000;//0
+						dLSB = 7'b0100100;//2
+					end
+					4'b0011:
+					begin
+						dMSB = 7'b1000000;//0
+						dLSB = 7'b0110000;//3
+					end
+					4'b0100:
+					begin
+						dMSB = 7'b1000000;//0
+						dLSB = 7'b0011001;//4
+					end
+					4'b0101:
+					begin
+						dMSB = 7'b1000000;//0
+						dLSB = 7'b0010010;//5
+					end
+					4'b0110:
+					begin
+						dMSB = 7'b1000000;//0
+						dLSB = 7'b0110010;//6
+					end
+					4'b0111:
+					begin
+						dMSB = 7'b1000000;//0
+						dLSB = 7'b1111000;//7
+					end
+					4'b1000:
+					begin
+						dMSB = 7'b1000000;//0
+						dLSB = 7'b0000000;//8
+					end
+					4'b1001:
+					begin
+						dMSB = 7'b1000000;//0
+						dLSB = 7'b0010000;//9
+					end
+					4'b1010:
+					begin
+						dMSB = 7'b1111001;//1
+						dLSB = 7'b1000000;//0
+					end
+					4'b1011:
+					begin
+						dMSB = 7'b1111001;//1
+						dLSB = 7'b1111001;//1
+					end
+					4'b1100:
+					begin
+						dMSB = 7'b1111001;//1
+						dLSB = 7'b0100100;//2
+					end
+					4'b1101:
+					begin
+						dMSB = 7'b1111001;//1
+						dLSB = 7'b0110000;//3
+					end
+					4'b1110:
+					begin
+						dMSB = 7'b1111001;//1
+						dLSB = 7'b0011001;//4
+					end
+					4'b1111:
+					begin
+						dMSB = 7'b1111001;//1
+						dLSB = 7'b0010010;//5
+					end
+				endcase
+			end
+			
+		end
+		
+endmodule
+
